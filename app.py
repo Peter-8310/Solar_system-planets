@@ -1,0 +1,83 @@
+from astro import *
+from quart import Quart, jsonify, render_template, request
+
+app = Quart(__name__, static_folder="static")
+k = 1
+
+bodies = [
+    Body("Sun", "#ffff00ff",   1.98847e30, 1392700, [0.0, 0.0],      [0.0, 0.0]),
+
+    Body("Mercury", '#b7b7b7', 0.33e24,  4879,    [57.9e9, 0.0],   [0.0, 47.4e3]),
+    Body("Venus",   '#e0c080', 4.872e24, 12104,   [108.2e9, 0.0],  [0.0, -35.0e3]),
+    Body("Earth",   '#4da6ff', 5.972e24, 12756,   [AU, 0.0],       [0.0, 29.78e3]),
+    Body("Mars",    '#ff5533', 6.42e24,   6792,   [227.9e9, 0.0],  [0.0, 24.1e3]),
+    Body("Jupiter", '#d9b38c', 1898e24, 142984,   [778.6e9, 0.0],  [0.0, 13.1e3]),
+    Body("Saturn",  '#e8d7a8', 568e24,  120536,   [1433.5e9, 0.0], [0.0, 9.7e3]),
+    Body("Uranus",  '#66ccff', 96.8e24,  51118,   [2872.5e9, 0.0], [0.0, -6.8e3]),
+    Body("Neptune", '#3366ff', 102e24,   49528,   [4495.1e9, 0.0], [0.0, 5.4e3]),
+]
+
+# GLOBAL time multiplier
+TIME_SCALE = 1.0
+TIME_ELAPSED = 0.0    
+
+dt_base = 1800  # 30-minute internal step (safe for Verlet)
+
+@app.route("/")
+async def index():
+    return await render_template("index.html")
+
+@app.route("/time")
+async def time():
+    global TIME_ELAPSED
+
+    
+
+
+    return
+
+@app.route("/state")
+async def state():
+    global TIME_SCALE, TIME_ELAPSED
+
+    # Number of physics steps per frame
+    steps = int(max(1, TIME_SCALE))
+
+    # fractional time step preserved for accuracy
+    dt_frac = TIME_SCALE / steps  
+
+    for _ in range(steps):
+        dt = dt_base * dt_frac
+        TIME_ELAPSED += dt
+
+        for b in bodies: 
+            b.update_position(dt)
+        compute_gravity(bodies)
+        for b in bodies:
+            b.update_velocity(dt)
+            
+    return jsonify([
+        {
+        "name": b.name,
+        "x": float(b.pos[0]), 
+        "y": float(b.pos[1]),
+        "v_x":float(b.v[0]),
+        "v_y":float(b.v[1]),
+        "a_x":float(b.a[0]),
+        "a_y":float(b.a[1]),
+        "d":  b.radius*2,
+        "r": max(4, b.radius / 20000),
+        "color":b.color
+        }
+        for b in bodies
+    ])
+
+@app.post("/set_time_scale")
+async def set_time_scale():
+    global TIME_SCALE
+    data = await request.get_json()
+    TIME_SCALE = float(data["scale"])
+    return jsonify({"ok": True})
+
+if __name__ == "__main__":
+    app.run(debug=True)
