@@ -21,7 +21,8 @@ bodies = [
 TIME_SCALE = 1.0
 TIME_ELAPSED = 0.0    
 
-dt_base = 1800  # 30-minute internal step (safe for Verlet)
+dt_base = 60  # 30-minute internal step (safe for Verlet)
+dt_stored = 0
 
 @app.route("/")
 async def index():
@@ -31,10 +32,17 @@ async def index():
 async def time():
     global TIME_ELAPSED
 
-    
+    days, t = divmod(TIME_ELAPSED, 3600*24)
+    hours, t = divmod(t, 3600)
+    minutes, t = divmod(t, 60)
 
-
-    return
+    return jsonify(
+            {
+            "days":days,
+            "hours":hours,
+            "minutes":minutes,
+        }
+    )
 
 @app.route("/state")
 async def state():
