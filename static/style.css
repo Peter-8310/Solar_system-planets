@@ -1,45 +1,54 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%; /* Ensure html and body take full viewport height */
+}
+
+.bottom-center-div {
+    /* Optional: Add styling for visibility */
+    background-color: lightblue;
+    padding: 20px;
+    border: 1px solid blue;
+}
+
 body {
-        background:#000;
-        margin:0;
-        overflow:hidden;
-        font-family:sans-serif;
-        user-select:none;
-    }
-    #c { display:block; }
-
-    #controls {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: transparent;
-        color: white;
-        padding: 12px;
-        border-radius: 10px;
-        width: 350px;
-        backdrop-filter: blur(4px);
-        z-index: 10;
-    }
-
-    #control-header {
-        cursor:pointer;
-        font-weight:bold;
-        margin-bottom:8px;
-    }
-
-    #controls button {
-        padding: 8px 12px;
-        margin-right: 4px;
-        margin-bottom: 6px;
-        font-size: 14px;
-        border: none;
-        border-radius: 6px;
-        background:#444;
-        color:white;
-        cursor:pointer;
-    }
-    #controls button:hover { background:#666; }
-
-    #controls input[type=range] { width: 100%; }
+    background:#000;
+    margin:0;
+    overflow:hidden;
+    font-family:sans-serif;
+    user-select:none;
+}
+#c { display:block; }
+#controls {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: transparent;
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    width: 350px;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+#control-header {
+    cursor:pointer;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+#controls button {
+    padding: 8px 12px;
+    margin-right: 4px;
+    margin-bottom: 6px;
+    font-size: 14px;
+  border: none;
+    border-radius: 6px;
+    background:#444;
+    color:white;
+    cursor:pointer;
+}
+#controls button:hover { background:#666; }
+#controls input[type=range] { width: 100%; }
 
 /* ★ NEW Floating info box */
 #infoBox {
@@ -54,17 +63,52 @@ body {
     display: none;
 }
 
-    #timerBox {
-  display: flex;
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  gap: 10px;
-  background: transparent;
-  padding: 14px;
-  border-radius: 10px;
-  color: white;
-  font-size: 14px;
+#timerWrapper {
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column; /* title above box */
+    align-items: center;    /* center horizontally */
+    pointer-events: none;
+}
+
+.timer-title {
+    font-size: 1.75em;
+    font-weight: bold;
+    color: white;
+    pointer-events: auto; /* optional */
+}
+
+#timerBox {
+    display: flex;
+    gap: 5px;
+    padding: 14px;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    background: transparent;
+    pointer-events: auto;
+}
+
+
+.countdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    color: white;
+    border-radius: 10px;
+    width: 100px;
+    text-align: center;
+    font-size: 1em;
+}
+
+.countdown-item div {
+    display: inline;
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 5px;
 }
 
 .countdown-item {

@@ -22,7 +22,11 @@ let trails = [];
 const maxTrail = 800;
 
 let islabel = false;
-let sun_to_origin = 0;
+let sun_x = 0;
+let sun_y = 0;
+
+let trailAccumulator = [];
+
 
 function setlabel(){
     islabel = !islabel;
@@ -125,10 +129,35 @@ canvas.oncontextmenu = e => e.preventDefault();
 --------------------------- */
 async function update(){
     const res = await fetch("/state");
+    const t   = await fetch("/time")
+    
     const bodies = await res.json();
+    const time = await t.json();
+    
     window.bodies = bodies;
 
-
+    document.getElementById("timerBox").innerHTML = `
+    <div class="countdown-item">
+        <div>${time.years}</div>
+        <span>Years</span>
+    </div>
+    <div class="countdown-item">
+        <div>${time.days}</div>
+        <span>Days</span>
+    </div>
+    <div class="countdown-item">
+        <div>${time.hours.toString().padStart(2, '0')}</div>
+        <span>Hours</span>
+    </div>
+    <div class="countdown-item">
+        <div>${time.minutes.toString().padStart(2, '0')}</div>
+        <span>Minutes</span>
+    </div>
+    <div class="countdown-item">
+        <div>${time.seconds.toString().padStart(2, '0')}</div>
+        <span>Seconds</span>
+    </div>
+    `
 
     bodies.forEach((b, i) => {
         if (!trails[i]) trails[i] = [];
@@ -155,20 +184,21 @@ function updateInfoBox(){
     const p = window.bodies.find(b => b.name === selectedPlanet.name);
     if (!p) return;
 
-    const velocity = Math.sqrt(p.v_x*p.v_x + p.v_y*p.v_y);
+    const dist = Math.hypot(p.x - sun_x, p.y - sun_y);
+    const velocity = Math.hypot(p.v_x, p.v_y);
+    const accelaration = Math.hypot(p.a_x, p.a_y);
 
     const AU = 1.496e11;
-
-    const diffx = p.x - window.sunX;
-    const diffy = p.y - window.sunY;
-    const distFromSun = Math.hypot(diffx, diffy);
 
     box.style.display = "block";
     box.innerHTML = `
         <b>${p.name}</b><br>
-        Distance from Sun: ${((distFromSun-sun_to_origin)/AU).toFixed(3)} AU<br>
+        Distance from Sun: ${(dist/AU).toFixed(3)} AU<br>
         Orbital velocity: ${(velocity).toFixed(3)} m/s<br>
-        Diameter: ${p.d} km<br>
+        Total accelaration: ${(accelaration.toFixed(3))} m/s<sup>2</sup> <br>
+
+        Diameter: ${p.d} km <br>
+
         X: ${p.x.toExponential(3)}<br>
         Y: ${p.y.toExponential(3)}<br>
     `;
@@ -278,9 +308,9 @@ function draw(){
         let r = Math.max(3, b.r);
 
         if (b.name==="Sun") drawGlow(sx,sy,r,"rgba(255,255,150,0.9)");
-        if (b.name === "Sun") {
-            window.sunX = b.x;
-            window.sunY = b.y;
+        if (b.name==="Sun"){
+            sun_x=b.x;
+            sun_y=b.y;
         }
 
         ctx.fillStyle=b.color;
