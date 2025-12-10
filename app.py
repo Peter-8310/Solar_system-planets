@@ -1,5 +1,6 @@
 from astro import *
 from quart import Quart, jsonify, render_template, request
+from math import hypot
 
 app = Quart(__name__, static_folder="static")
 k = 1
@@ -10,6 +11,7 @@ bodies = [
     Body("Mercury", '#b7b7b7', 0.33e24,  4879,    [57.9e9, 0.0],   [0.0, 47.4e3]),
     Body("Venus",   '#e0c080', 4.872e24, 12104,   [108.2e9, 0.0],  [0.0, -35.0e3]),
     Body("Earth",   '#4da6ff', 5.972e24, 12756,   [AU, 0.0],       [0.0, 29.78e3]),
+    Body("Moon",    "#969696", 0.073e24,  3475,   [AU+384e6,0]  ,  [0.0, 29.78e3+1.022e3]),
     Body("Mars",    '#ff5533', 6.42e24,   6792,   [227.9e9, 0.0],  [0.0, 24.1e3]),
     Body("Jupiter", '#d9b38c', 1898e24, 142984,   [778.6e9, 0.0],  [0.0, 13.1e3]),
     Body("Saturn",  '#e8d7a8', 568e24,  120536,   [1433.5e9, 0.0], [0.0, 9.7e3]),
@@ -73,12 +75,17 @@ async def state():
         "name": b.name,
         "x": float(b.pos[0]), 
         "y": float(b.pos[1]),
+
         "v_x":float(b.v[0]),
         "v_y":float(b.v[1]),
+        "v_total": hypot(float(b.v[0]), float(b.v[1])),
+
         "a_x":float(b.a[0]),
         "a_y":float(b.a[1]),
+        "a_total": hypot(float(b.a[0]), float(b.a[1])),
+        
         "d":  b.radius*2,
-        "r": max(4, b.radius / 20000),
+        "r": max(1, (b.radius / 5000)),
         "color":b.color
         }
         for b in bodies
