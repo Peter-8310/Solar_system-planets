@@ -1,1 +1,3 @@
+templates/* linguist-documentation=true
+static/* linguist-documentation=true
 *.py linguist-language=Python
