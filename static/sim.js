@@ -78,7 +78,7 @@ canvas.addEventListener("mousedown", e => {
         for (const b of (window.bodies || [])) {
         const dx = wx - b.x;
         const dy = wy - b.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = Math.hypot(dx, dy);
 
         // detection radius based on pixels, not world size
         const tolerance = 50 * scale;
@@ -143,31 +143,19 @@ function updateInfoBox(){
     }
     const p = window.bodies.find(b => b.name === selectedPlanet.name);
     if (!p) return;
-    const dist = Math.hypot(p.x - earth_x, p.y - earth_y);
+    const sun_dist = Math.hypot(p.x - sun_x, p.y - sun_y);
+    const earth_dist = Math.hypot(p.x - earth_x, p.y - earth_y)
     const AU = 1.496e11;
     box.style.display = "block";
-
-    if(p.name === "Moon"){
-        box.innerHTML = `
+    box.innerHTML = `
         <b>${p.name}</b><br>
-        Distance from Earth: ${(dist/1000).toFixed(3)} km<br>
+        Distance from Earth: ${(earth_dist/1000).toFixed(3)} km<br>
+        Distance from Sun: ${(sun_dist/AU).toFixed(3)} AU<br>
         Orbital velocity: ${(p.v_total).toFixed(3)} m/s<br>
         Total accelaration: ${(p.a_total).toFixed(3)} m/s<sup>2</sup> <br>
         Diameter: ${p.d} km <br>
         X: ${p.x.toExponential(3)}<br>
         Y: ${p.y.toExponential(3)}<br>`;
-    } else {
-        box.innerHTML = `
-        <b>${p.name}</b><br>
-        Distance from Sun: ${(dist/AU).toFixed(3)} AU<br>
-        Orbital velocity: ${(p.v_total).toFixed(3)} m/s<br>
-        Total accelaration: ${(p.a_total).toFixed(3)} m/s<sup>2</sup> <br>
-        Diameter: ${p.d} km <br>
-        X: ${p.x.toExponential(3)}<br>
-        Y: ${p.y.toExponential(3)}<br>
-        `;
-
-    }
 }
 /* ------------------------DRAW HELPERS--------------------------- */
 function worldToScreen(x, y){ return {sx: canvas.width/2 + (x - offsetX)/scale, sy: canvas.height/2 - (y - offsetY)/scale}; }
@@ -274,7 +262,7 @@ function draw(){
             ctx.beginPath();
             ctx.arc(sx, sy, r+4, 0, 2*Math.PI);
             ctx.stroke();
-            const speed = Math.sqrt(b.v_x*b.v_x + b.v_y*b.v_y);
+            const speed = Math.hypot(b.v_x, b.v_y);
             const arrowLengthPixels = 50;   // constant size on screen
             const arrowLength = arrowLengthPixels * scale;
             const vxUnit = b.v_x / speed;
