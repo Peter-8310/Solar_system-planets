@@ -1,4 +1,4 @@
 # Solar_system-planets
 ![Quart](https://img.shields.io/badge/Framework-Quart-purple)
-This repository explains the orbits of the first 8 planets in the solar system using newtonian physiscs (classical mechanics).
+This repository explains the orbits of the first 8 planets in the solar system using newtonian physiscs (classical mechanics) with a bit of Post-Newtonian corrections (theory of relativity).
 Deeper explaination coming soon!

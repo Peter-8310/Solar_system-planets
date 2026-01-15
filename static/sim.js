@@ -147,15 +147,32 @@ function updateInfoBox(){
     const earth_dist = Math.hypot(p.x - earth_x, p.y - earth_y)
     const AU = 1.496e11;
     box.style.display = "block";
-    box.innerHTML = `
+    if(p.name === "Earth"){
+        box.innerHTML = `
         <b>${p.name}</b><br>
-        Distance from Earth: ${(earth_dist/1000).toFixed(3)} km<br>
         Distance from Sun: ${(sun_dist/AU).toFixed(3)} AU<br>
         Orbital velocity: ${(p.v_total).toFixed(3)} m/s<br>
         Total accelaration: ${(p.a_total).toFixed(3)} m/s<sup>2</sup> <br>
-        Diameter: ${p.d} km <br>
-        X: ${p.x.toExponential(3)}<br>
-        Y: ${p.y.toExponential(3)}<br>`;
+        Mass : ${p.m}<br>
+        Diameter: ${p.d} km<br>`;
+    } else if (p.name === "Sun"){
+        box.innerHTML = `
+        <b>${p.name}</b><br>
+        Distance from Earth: ${(earth_dist/AU).toFixed(3)} AU<br>
+        Orbital velocity: ${(p.v_total).toFixed(3)} m/s<br>
+        Total accelaration: ${(p.a_total).toFixed(3)} m/s<sup>2</sup> <br>
+        Mass : ${p.m}<br>
+        Diameter: ${p.d} km<br>`;
+    } else {
+        box.innerHTML = `
+        <b>${p.name}</b><br>
+        Distance from Earth: ${(earth_dist/AU).toFixed(3)} AU<br>
+        Distance from Sun: ${(sun_dist/AU).toFixed(3)} AU<br>
+        Orbital velocity: ${(p.v_total).toFixed(3)} m/s<br>
+        Total accelaration: ${(p.a_total).toFixed(3)} m/s<sup>2</sup> <br>
+        Mass : ${p.m} <br>
+        Diameter: ${p.d} km<br>`;
+    }
 }
 /* ------------------------DRAW HELPERS--------------------------- */
 function worldToScreen(x, y){ return {sx: canvas.width/2 + (x - offsetX)/scale, sy: canvas.height/2 - (y - offsetY)/scale}; }
@@ -236,8 +253,13 @@ function draw(){
     // Bodies
     bodies.forEach(b=>{
         const {sx,sy}=worldToScreen(b.x,b.y);
-        let r = Math.max(b.r, 1);
-        if (b.name==="Sun") drawGlow(sx,sy,r/4,"rgba(255,255,150,0.9)");
+
+        const MIN_RADIUS_PX = 1.5;
+        const MAX_RADIUS_PX = 20;
+
+        let r = (b.r / scale)*(15e6);
+        r = Math.max(MIN_RADIUS_PX, r);
+        if (b.name==="Sun") drawGlow(sx,sy,r/2,"rgba(255,255,150,0.9)");
         if (b.name==="Sun"){
             sun_x=b.x;
             sun_y=b.y;
