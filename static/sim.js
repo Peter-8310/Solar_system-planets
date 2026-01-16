@@ -17,12 +17,16 @@ let offsetY = 0;
 let trails = [];
 const maxTrail = 800;
 let islabel = false;
+let isgravityfield = false;
 let sun_x = 0;
 let sun_y = 0;
 let earth_x = 0;
 let earth_y = 0;
 function setlabel(){
     islabel = !islabel;
+}
+function setgravityfeild(){
+    isgravityfield = !isgravityfield;
 }
     /* ------------------------INPUT CONTROLS--------------------------- */
 document.addEventListener("keydown", e => {
@@ -228,84 +232,150 @@ function drawLabeledArrow(x1, y1, x2, y2, color="orange", label="") {
         ctx.fillText(label, x2 - 10, y2 - 5);
     }
 }
+
+function drawArrowHead(x2, y2, x1, y1) {
+    const headLength = 8;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(
+        x2 - headLength * Math.cos(angle - Math.PI / 6),
+        y2 - headLength * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.lineTo(
+        x2 - headLength * Math.cos(angle + Math.PI / 6),
+        y2 - headLength * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fill();
+}
+
+
+async function fetchFieldLines(){
+    const res = await fetch("/field_lines");
+    fieldLines = await res.json();
+}
+
+fetchFieldLines();
+
 /* ------------------------
     DRAW FRAME
 --------------------------- */
-function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    if (!window.bodies) return;
-    const bodies = window.bodies;
-    // Trails
-    bodies.forEach((b,i)=>{
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Ensure bodies exist
+    const bodies = window.bodies || [];
+    if (bodies.length === 0) return;
+
+    // Draw field lines if available
+    if (window.fieldLines && isgravityfield) {
+        ctx.strokeStyle = "rgba(255,255,255,0.15)";
+        ctx.lineWidth = 1;
+
+        for (const line of window.fieldLines) {
+            ctx.beginPath();
+            for (let i = 0; i < line.length; i++) {
+                const p = worldToScreen(line[i].x, line[i].y);
+                if (i === 0) ctx.moveTo(p.sx, p.sy);
+                else ctx.lineTo(p.sx, p.sy);
+            }
+            ctx.stroke();
+
+            // Arrowhead at the end
+            if (line.length >= 2) {
+                const p1 = worldToScreen(line[line.length - 2].x, line[line.length - 2].y);
+                const p2 = worldToScreen(line[line.length - 1].x, line[line.length - 1].y);
+                drawArrowHead(p1.sx, p1.sy, p2.sx, p2.sy);
+            }
+        }
+    }
+
+    // Draw trails
+    bodies.forEach((b, i) => {
+        if (!trails[i]) trails[i] = [];
+        trails[i].push({ x: b.x, y: b.y });
+        if (trails[i].length > maxTrail) trails[i].shift();
+
         ctx.beginPath();
-        // ★ Highlight selected orbit
-        ctx.strokeStyle =
-            selectedPlanet && selectedPlanet.name === b.name
-                ? b.color + "AA"
-                : b.color + "40";
-        trails[i].forEach((p,j)=>{
-            const {sx,sy}=worldToScreen(p.x,p.y);
-            if(j===0) ctx.moveTo(sx,sy);
-            else ctx.lineTo(sx,sy);
+        ctx.strokeStyle = (selectedPlanet && selectedPlanet.name === b.name ? b.color + "AA" : b.color + "40");
+        trails[i].forEach((p, j) => {
+            const { sx, sy } = worldToScreen(p.x, p.y);
+            if (j === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
         });
         ctx.stroke();
     });
-    // Bodies
-    bodies.forEach(b=>{
-        const {sx,sy}=worldToScreen(b.x,b.y);
+
+    // Draw bodies
+    bodies.forEach(b => {
+        const { sx, sy } = worldToScreen(b.x, b.y);
 
         const MIN_RADIUS_PX = 1.5;
         const MAX_RADIUS_PX = 20;
 
-        let r = (b.r / scale)*(15e6);
+        let r = (b.r / scale) * (15e6);
         r = Math.max(MIN_RADIUS_PX, r);
-        if (b.name==="Sun") drawGlow(sx,sy,r/2,"rgba(255,255,150,0.9)");
-        if (b.name==="Sun"){
-            sun_x=b.x;
-            sun_y=b.y;
+        r = Math.min(MAX_RADIUS_PX, r);
+
+        // Save Sun and Earth positions
+        if (b.name === "Sun") {
+            sun_x = b.x;
+            sun_y = b.y;
+            drawGlow(sx, sy, r / 2, "rgba(255,255,150,0.9)");
         }
-        if (b.name==="Earth"){
-            earth_x=b.x;
-            earth_y=b.y
+        if (b.name === "Earth") {
+            earth_x = b.x;
+            earth_y = b.y;
         }
-        ctx.fillStyle=b.color;
+
+        ctx.fillStyle = b.color;
         ctx.beginPath();
-        ctx.arc(sx,sy,r,0,2*Math.PI);
+        ctx.arc(sx, sy, r, 0, 2 * Math.PI);
         ctx.fill();
-        if(islabel){
+
+        // Draw labels if enabled
+        if (islabel) {
             ctx.font = "16px sans-serif";
             ctx.textAlign = "center";
             ctx.fillStyle = "white";
-            ctx.fillText(b.name, sx + 10, sy - 1.05*(r + 15));
+            ctx.fillText(b.name, sx + 10, sy - 1.05 * (r + 15));
         }
+
+        // Highlight selected planet and draw velocity/acceleration arrows
         if (selectedPlanet && selectedPlanet.name === b.name) {
             ctx.strokeStyle = "white";
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(sx, sy, r+4, 0, 2*Math.PI);
+            ctx.arc(sx, sy, r + 4, 0, 2 * Math.PI);
             ctx.stroke();
+
+            // Velocity arrow
             const speed = Math.hypot(b.v_x, b.v_y);
-            const arrowLengthPixels = 50;   // constant size on screen
-            const arrowLength = arrowLengthPixels * scale;
-            const vxUnit = b.v_x / speed;
-            const vyUnit = b.v_y / speed;
-            const worldEndX = b.x + vxUnit * arrowLength;
-            const worldEndY = b.y + vyUnit * arrowLength;
-            const end = worldToScreen(worldEndX, worldEndY);
-            drawLabeledArrow(sx, sy, end.sx, end.sy, "white", "v");
-            const ax = b.a_x;
-            const ay = b.a_y;
-            const amag = Math.hypot(ax, ay);
-        if (amag > 0) {
-            const accLength = accArrowLengthPixels * scale;
-            const axUnit = ax / amag;
-            const ayUnit = ay / amag;
-            const worldEndX = b.x + axUnit * accLength;
-            const worldEndY = b.y + ayUnit * accLength;
-            const end = worldToScreen(worldEndX, worldEndY);
-            drawLabeledArrow(sx, sy, end.sx, end.sy, "orange", "a");
+            if (speed > 0) {
+                const vxUnit = b.v_x / speed;
+                const vyUnit = b.v_y / speed;
+                const worldEndX = b.x + vxUnit * velArrowLengthPixels * scale;
+                const worldEndY = b.y + vyUnit * velArrowLengthPixels * scale;
+                const end = worldToScreen(worldEndX, worldEndY);
+                drawLabeledArrow(sx, sy, end.sx, end.sy, "white", "v");
+            }
+
+            // Acceleration arrow
+            const amag = Math.hypot(b.a_x, b.a_y);
+            if (amag > 0) {
+                const axUnit = b.a_x / amag;
+                const ayUnit = b.a_y / amag;
+                const worldEndX = b.x + axUnit * accArrowLengthPixels * scale;
+                const worldEndY = b.y + ayUnit * accArrowLengthPixels * scale;
+                const end = worldToScreen(worldEndX, worldEndY);
+                drawLabeledArrow(sx, sy, end.sx, end.sy, "orange", "a");
+            }
         }
-}});
+    });
 }
+
 
 update();

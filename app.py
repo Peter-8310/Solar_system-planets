@@ -49,6 +49,25 @@ async def time():
         }
     )
 
+@app.route("/field_lines")
+async def field_lines():
+    lines = []
+
+    # simple radial test field (debug)
+    for angle in range(0, 360, 15):
+        theta = angle * np.pi / 180
+        line = []
+        r = 1e10
+        for _ in range(100):
+            x = r * np.cos(theta)
+            y = r * np.sin(theta)
+            line.append({"x": x, "y": y})
+            r += 2e9
+        lines.append(line)
+
+    return jsonify(lines)
+
+
 @app.route("/state")
 async def state():
     global TIME_SCALE, TIME_ELAPSED
