@@ -49,24 +49,20 @@ async def time():
         }
     )
 
-@app.route("/field_lines")
-async def field_lines():
-    lines = []
+@app.route("/vector_field")
+def vector_field():
+    global bodies
 
-    # simple radial test field (debug)
-    for angle in range(0, 360, 15):
-        theta = angle * np.pi / 180
-        line = []
-        r = 1e10
-        for _ in range(100):
-            x = r * np.cos(theta)
-            y = r * np.sin(theta)
-            line.append({"x": x, "y": y})
-            r += 2e9
-        lines.append(line)
+    vectors = sample_vector_field(
+        bodies,
+        xmin=-3*AU,
+        xmax= 3*AU,
+        ymin=-3*AU,
+        ymax= 3*AU,
+        step=0.3*AU
+    )
 
-    return jsonify(lines)
-
+    return jsonify(vectors)
 
 @app.route("/state")
 async def state():

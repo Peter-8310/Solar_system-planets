@@ -115,61 +115,28 @@ def simulate(bodies:list[Body], dt):
     for b in bodies:
         b.update_velocity(dt)
 
-def trace_field_line(
-    x0, y0,
-    bodies:list[Body],
-    step=1e9,
-    max_steps=1000
+def field_dir(x, y, bodies):
+    gx, gy = GravityField(np.array([x, y]), bodies)
+    gmag = np.hypot(gx, gy)
+    if gmag < 1e-20:
+        return 0.0, 0.0
+    return gx / gmag, gy / gmag
+
+def sample_vector_field(
+    bodies,
+    xmin, xmax,
+    ymin, ymax,
+    step
 ):
-    points = []
-    x, y = x0, y0
+    vectors = []
 
-    for _ in range(max_steps):
-        gx, gy = GravityField(x, y, bodies)
-        gmag = (gx*gx + gy*gy)**0.5
-        if gmag < 1e-20:
-            break
+    x = xmin
+    while x <= xmax:
+        y = ymin
+        while y <= ymax:
+            gx, gy = GravityField(np.array([x, y]), bodies)
+            vectors.append([x, y, gx, gy])
+            y += step
+        x += step
 
-        # Normalize direction
-        dx = gx / gmag
-        dy = gy / gmag
-
-        points.append((x, y))
-
-        # RK4
-        k1x, k1y = dx, dy
-        k2x, k2y = GravityField(x + 0.5*step*k1x,
-                                          y + 0.5*step*k1y,
-                                          bodies)
-        k3x, k3y = GravityField(x + 0.5*step*k2x,
-                                          y + 0.5*step*k2y,
-                                          bodies)
-        k4x, k4y = GravityField(x + step*k3x,
-                                          y + step*k3y,
-                                          bodies)
-
-        x += step * (k1x + 2*k2x + 2*k3x + k4x) / 6
-        y += step * (k1y + 2*k2y + 2*k3y + k4y) / 6
-
-        # Stop near massive body
-        for b in bodies:
-            if ((x - b.pos[0])**2 + (y - b.pos[1])**2)**0.5 < b.radius*2:
-                return points
-
-    return points
-
-def generate_field_lines(bodies:list[Body], lines_per_body=12):
-    lines = []
-
-    for b in bodies:
-        for i in range(lines_per_body):
-            angle = 2 * np.pi * i / lines_per_body
-            r = b.radius * 3
-
-            x0 = b.pos[0] + r * np.cos(angle)
-            y0 = b.pos[1] + r * np.sin(angle)
-
-            line = trace_field_line(x0, y0, bodies)
-            lines.append(line)
-
-    return lines
+    return vectors

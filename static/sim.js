@@ -1,3 +1,20 @@
+const fieldWorker = new Worker("/static/fieldWorker.js");
+
+fieldWorker.onmessage = (e) => {
+    const { type, data, error } = e.data;
+
+    if (error) {
+        console.error("Field worker error:", error);
+        vectorBusy = false;
+        linesBusy  = false;
+        return;
+    }
+
+    if (type === "vector") {
+        vectorField = data;
+        vectorBusy = false;
+    }
+};
 
 /* ------------------------
     CANVAS SETUP
@@ -8,6 +25,7 @@ function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
 resize();
 window.onresize = resize;
 /* ★ NEW */
+const VECTOR_SPACING_PX = 40;
 let selectedPlanet = null;
 let followPlanet = null;
 /* ------------------------CAMERA--------------------------- */
@@ -15,9 +33,12 @@ let scale = 57.9e9 / 200;
 let offsetX = 0;
 let offsetY = 0;
 let trails = [];
-const maxTrail = 800;
+const maxTrail = 500;
 let islabel = false;
-let isgravityfield = false;
+let vectorField = [];
+
+let showgVectorFeild = false;
+
 let sun_x = 0;
 let sun_y = 0;
 let earth_x = 0;
@@ -25,8 +46,19 @@ let earth_y = 0;
 function setlabel(){
     islabel = !islabel;
 }
-function setgravityfeild(){
-    isgravityfield = !isgravityfield;
+
+let vectorBusy = false;
+
+function loadVectorField() {
+    if (vectorBusy || !showgVectorFeild) return;
+
+    vectorBusy = true;
+    const points = computeScreenSamplePoints();
+
+    fieldWorker.postMessage({
+        type: "vector",
+        points
+    });
 }
     /* ------------------------INPUT CONTROLS--------------------------- */
 document.addEventListener("keydown", e => {
@@ -102,10 +134,23 @@ canvas.addEventListener("mousedown", e => {
 /* Disable context menu (right-click) */
 canvas.oncontextmenu = e => e.preventDefault();
 
+let fieldDirty = true;
+
+function markFieldDirty() {
+    fieldDirty = true;
+}
+
+function ReloadVectorField() {
+    if (!fieldDirty) return;
+    loadVectorField();
+    fieldDirty = false;
+}
+
 /* ------------------------FETCH LOOP--------------------------- */
 async function update(){
     const res = await fetch("/state");
-    const t   = await fetch("/time")
+    const t   = await fetch("/time");
+
     const bodies = await res.json();
     const time = await t.json();
     window.bodies = bodies;
@@ -233,11 +278,11 @@ function drawLabeledArrow(x1, y1, x2, y2, color="orange", label="") {
     }
 }
 
-function drawArrowHead(x2, y2, x1, y1) {
+function drawArrowHead(x2, y2, x1, y1, color) {
     const headLength = 8;
     const angle = Math.atan2(y2 - y1, x2 - x1);
 
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.moveTo(x2, y2);
     ctx.lineTo(
@@ -252,46 +297,88 @@ function drawArrowHead(x2, y2, x1, y1) {
     ctx.fill();
 }
 
+function drawVectorField(ctx) {
+    if (!showgVectorFeild) return;
 
-async function fetchFieldLines(){
-    const res = await fetch("/field_lines");
-    fieldLines = await res.json();
+    ctx.lineWidth = 1.6;
+
+    vectorField.forEach(v => {
+        const [x, y, gx, gy] = v;
+
+        const gmag = Math.hypot(gx, gy);
+        if (gmag === 0) return;
+
+        // --- Screen position ---
+        const p = worldToScreen(x, y);
+
+        // --- SAME scaling as orange acceleration arrow ---
+        let L = 50;
+        const ux = gx / gmag;
+        const uy = gy / gmag;
+
+        // --- Shaft start/end (tail at grid point) ---
+        const x1 = p.sx;
+        const y1 = p.sy;
+        const x2 = p.sx + ux * L;
+        const y2 = p.sy - uy * L;
+
+        // --- Color by magnitude ---
+        const t = Math.min(1, Math.log10(gmag + 1e-30) / 12);
+
+        const r = Math.floor(255 * t);
+        const g = Math.floor(255 * (1 - Math.abs(t - 0.5) * 2));
+        const b = Math.floor(255 * (1 - t));
+
+        ctx.strokeStyle = `rgb(${r},${g},${b})`;
+        ctx.fillStyle   = `rgb(${r},${g},${b})`;
+
+        // Shaft
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Head
+        drawArrowHead(x2, y2, x1, y1, ctx.strokeStyle);
+    });
 }
 
-fetchFieldLines();
+function loadVectorField() {
+    fieldWorker.postMessage({ type: "vector" });
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key === "v") {
+        showgVectorFeild = !showgVectorFeild;
+        if (showgVectorFeild) loadVectorField();
+    }
+});
+
+function computeScreenSamplePoints() {
+    const pts = [];
+
+    for (let sx = 0; sx < canvas.width; sx += VECTOR_SPACING_PX) {
+        for (let sy = 0; sy < canvas.height; sy += VECTOR_SPACING_PX) {
+
+            const wx = (sx - canvas.width / 2) * scale + offsetX;
+            const wy = (canvas.height / 2 - sy) * scale + offsetY;
+
+            pts.push([wx, wy]);
+        }
+    }
+    return pts;
+}
 
 /* ------------------------
     DRAW FRAME
 --------------------------- */
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     // Ensure bodies exist
     const bodies = window.bodies || [];
     if (bodies.length === 0) return;
 
-    // Draw field lines if available
-    if (window.fieldLines && isgravityfield) {
-        ctx.strokeStyle = "rgba(255,255,255,0.15)";
-        ctx.lineWidth = 1;
-
-        for (const line of window.fieldLines) {
-            ctx.beginPath();
-            for (let i = 0; i < line.length; i++) {
-                const p = worldToScreen(line[i].x, line[i].y);
-                if (i === 0) ctx.moveTo(p.sx, p.sy);
-                else ctx.lineTo(p.sx, p.sy);
-            }
-            ctx.stroke();
-
-            // Arrowhead at the end
-            if (line.length >= 2) {
-                const p1 = worldToScreen(line[line.length - 2].x, line[line.length - 2].y);
-                const p2 = worldToScreen(line[line.length - 1].x, line[line.length - 1].y);
-                drawArrowHead(p1.sx, p1.sy, p2.sx, p2.sy);
-            }
-        }
-    }
+    drawVectorField(ctx);   // background
 
     // Draw trails
     bodies.forEach((b, i) => {
