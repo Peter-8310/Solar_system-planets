@@ -37,7 +37,11 @@ const maxTrail = 500;
 let islabel = false;
 let vectorField = [];
 
-let showgVectorFeild = false;
+let isVectorFeild = false;
+function showVectorFeild(){
+    isVectorFeild = isVectorFeild;
+}
+
 
 let sun_x = 0;
 let sun_y = 0;
@@ -49,17 +53,24 @@ function setlabel(){
 
 let vectorBusy = false;
 
-function loadVectorField() {
-    if (vectorBusy || !showgVectorFeild) return;
+async function loadVectorField() {
+    const xmin = offsetX - canvas.width  * scale / 2;
+    const xmax = offsetX + canvas.width  * scale / 2;
+    const ymin = offsetY - canvas.height * scale / 2;
+    const ymax = offsetY + canvas.height * scale / 2;
 
-    vectorBusy = true;
-    const points = computeScreenSamplePoints();
+    const step = VECTOR_SPACING_PX * scale;
 
-    fieldWorker.postMessage({
-        type: "vector",
-        points
+    const res = await fetch("/vector_field", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ xmin, xmax, ymin, ymax, step })
     });
+
+    const json = await res.json();
+    vectorField = json.vectors;
 }
+
     /* ------------------------INPUT CONTROLS--------------------------- */
 document.addEventListener("keydown", e => {
     const p = 40 * scale;
@@ -133,18 +144,6 @@ canvas.addEventListener("mousedown", e => {
 });
 /* Disable context menu (right-click) */
 canvas.oncontextmenu = e => e.preventDefault();
-
-let fieldDirty = true;
-
-function markFieldDirty() {
-    fieldDirty = true;
-}
-
-function ReloadVectorField() {
-    if (!fieldDirty) return;
-    loadVectorField();
-    fieldDirty = false;
-}
 
 /* ------------------------FETCH LOOP--------------------------- */
 async function update(){
@@ -298,7 +297,7 @@ function drawArrowHead(x2, y2, x1, y1, color) {
 }
 
 function drawVectorField(ctx) {
-    if (!showgVectorFeild) return;
+    if (!isVectorFeild) return;
 
     ctx.lineWidth = 1.6;
 
@@ -312,7 +311,7 @@ function drawVectorField(ctx) {
         const p = worldToScreen(x, y);
 
         // --- SAME scaling as orange acceleration arrow ---
-        let L = 50;
+        let L = 25;
         const ux = gx / gmag;
         const uy = gy / gmag;
 
@@ -343,31 +342,11 @@ function drawVectorField(ctx) {
     });
 }
 
-function loadVectorField() {
-    fieldWorker.postMessage({ type: "vector" });
-}
-
 document.addEventListener("keydown", e => {
     if (e.key === "v") {
-        showgVectorFeild = !showgVectorFeild;
-        if (showgVectorFeild) loadVectorField();
+        isVectorFeild = !isVectorFeild;
     }
 });
-
-function computeScreenSamplePoints() {
-    const pts = [];
-
-    for (let sx = 0; sx < canvas.width; sx += VECTOR_SPACING_PX) {
-        for (let sy = 0; sy < canvas.height; sy += VECTOR_SPACING_PX) {
-
-            const wx = (sx - canvas.width / 2) * scale + offsetX;
-            const wy = (canvas.height / 2 - sy) * scale + offsetY;
-
-            pts.push([wx, wy]);
-        }
-    }
-    return pts;
-}
 
 /* ------------------------
     DRAW FRAME
@@ -377,6 +356,10 @@ function draw() {
     // Ensure bodies exist
     const bodies = window.bodies || [];
     if (bodies.length === 0) return;
+
+    if (isVectorFeild){
+        loadVectorField();
+    }
 
     drawVectorField(ctx);   // background
 

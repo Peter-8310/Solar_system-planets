@@ -49,20 +49,27 @@ async def time():
         }
     )
 
-@app.route("/vector_field")
-def vector_field():
-    global bodies
+@app.post("/vector_field")
+async def vector_field():
+    data = await request.get_json()
 
-    vectors = sample_vector_field(
-        bodies,
-        xmin=-3*AU,
-        xmax= 3*AU,
-        ymin=-3*AU,
-        ymax= 3*AU,
-        step=0.3*AU
-    )
+    xmin = data["xmin"]
+    xmax = data["xmax"]
+    ymin = data["ymin"]
+    ymax = data["ymax"]
+    step = data["step"]
 
-    return jsonify(vectors)
+    vectors = []
+    for x in np.arange(xmin, xmax, step):
+        for y in np.arange(ymin, ymax, step):
+            gx, gy = GravityField(np.array([x, y]), bodies)
+            vectors.append([
+                float(x), float(y),
+                float(gx), float(gy)
+            ])
+
+    return jsonify({"vectors": vectors})
+
 
 @app.route("/state")
 async def state():
