@@ -1,21 +1,3 @@
-const fieldWorker = new Worker("/static/fieldWorker.js");
-
-fieldWorker.onmessage = (e) => {
-    const { type, data, error } = e.data;
-
-    if (error) {
-        console.error("Field worker error:", error);
-        vectorBusy = false;
-        linesBusy  = false;
-        return;
-    }
-
-    if (type === "vector") {
-        vectorField = data;
-        vectorBusy = false;
-    }
-};
-
 /* ------------------------
     CANVAS SETUP
 --------------------------- */
@@ -25,9 +7,31 @@ function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
 resize();
 window.onresize = resize;
 /* ★ NEW */
+let lastFieldUpdate = 0;
+const FIELD_INTERVAL = 250; // ms (4 Hz)
+
+let lastHeatUpdate = 0;
+const HEAT_INTERVAL = 250; // ms
+
+let lagrangeBusy = false;
+let lagrangeDirty = true;
+let lastLagrangeUpdate = 0;
+
+const LAGRANGE_INTERVAL = 800; // ms (≈ 1.25 Hz)
+
+
 const VECTOR_SPACING_PX = 40;
 let selectedPlanet = null;
 let followPlanet = null;
+
+let vectorBusy = false;
+let vectorDirty = true;
+
+let heatBusy = false;
+let heatmap = null;
+
+let lagrangePoints = null;
+
 /* ------------------------CAMERA--------------------------- */
 let scale = 57.9e9 / 200;  
 let offsetX = 0;
@@ -38,20 +42,43 @@ let islabel = false;
 let vectorField = [];
 
 let isVectorFeild = false;
-function showVectorFeild(){
-    isVectorFeild = isVectorFeild;
-}
-
+let isHeatMap = false;
 
 let sun_x = 0;
 let sun_y = 0;
 let earth_x = 0;
 let earth_y = 0;
+
+function markLagrangeDirty() {
+    lagrangeDirty = true;
+}
+
 function setlabel(){
     islabel = !islabel;
 }
 
-let vectorBusy = false;
+async function loadLagrangePointsAsync() {
+    if (!selectedPlanet || selectedPlanet.name === "Sun") {
+        lagrangePoints = null;
+        lagrangeDirty = false;
+        return;
+    }
+
+    const res = await fetch("/lagrange", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planet: selectedPlanet.name })
+    });
+
+    if (!res.ok) {
+        console.warn("Lagrange fetch failed");
+        return;
+    }
+
+    const json = await res.json();
+    lagrangePoints = json.points;
+}
+
 
 async function loadVectorField() {
     const xmin = offsetX - canvas.width  * scale / 2;
@@ -71,6 +98,31 @@ async function loadVectorField() {
     vectorField = json.vectors;
 }
 
+async function loadAccelHeatmap() {
+    const xmin = offsetX - canvas.width  * scale / 2;
+    const xmax = offsetX + canvas.width  * scale / 2;
+    const ymin = offsetY - canvas.height * scale / 2;
+    const ymax = offsetY + canvas.height * scale / 2;
+    const step = VECTOR_SPACING_PX * scale;
+
+    const res = await fetch("/accel_heatmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ xmin, xmax, ymin, ymax, step })
+    });
+
+    const json = await res.json();
+    return {
+        grid: json.grid,
+        bounds: { xmin, ymin, step }
+    };
+}
+
+async function updateHeatmap() {
+    heatmap = await loadAccelHeatmap();
+    heatmapDirty = false;
+}
+
     /* ------------------------INPUT CONTROLS--------------------------- */
 document.addEventListener("keydown", e => {
     const p = 40 * scale;
@@ -81,12 +133,16 @@ document.addEventListener("keydown", e => {
     if (e.key === "e" || e.key === "=") scale *= 0.9;
     if (e.key === "q" || e.key === "_") scale *= 1.1;
     if (e.key === "f") {followPlanet = followPlanet ? null : selectedPlanet;}
+    if (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d") {markLagrangeDirty();}
+
 
 });
 /* Scroll zoom */
 canvas.addEventListener("wheel", e => {
+    markLagrangeDirty();
     e.preventDefault();
     scale *= (e.deltaY < 0 ? 0.9 : 1.1);
+    vectorDirty = true;
 });
 /* ------------------------COLLAPSIBLE PANEL--------------------------- */
 const head = document.getElementById("control-header");
@@ -104,6 +160,7 @@ const tsVal = document.getElementById("ts_val");
 let currentScale = 1;
 async function setTime(v){
     currentScale = v;
+    markLagrangeDirty();
     slider.value = v;
     tsVal.textContent = v + "×";
     await fetch("/set_time_scale", {
@@ -137,10 +194,19 @@ canvas.addEventListener("mousedown", e => {
     }
 
     if (e.button === 0) {
-        // ★ Left-click → select & show info
+    if (clicked) {
         selectedPlanet = clicked;
+        markLagrangeDirty();
+        updateInfoBox();
+    } else {
+        // ★ CLICKED EMPTY SPACE → CLEAR SELECTION
+        selectedPlanet = null;
+        lagrangePoints = null;
         updateInfoBox();
     }
+}
+
+
 });
 /* Disable context menu (right-click) */
 canvas.oncontextmenu = e => e.preventDefault();
@@ -162,6 +228,7 @@ async function update(){
     `
     if (followPlanet) {
         const p = window.bodies.find(b => b.name === followPlanet.name);
+        markLagrangeDirty();
         if (p) {
             offsetX = p.x;
             offsetY = p.y;
@@ -277,6 +344,27 @@ function drawLabeledArrow(x1, y1, x2, y2, color="orange", label="") {
     }
 }
 
+function drawLagrangePoints(points) {
+    ctx.save();
+    ctx.fillStyle = "cyan";
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 1;
+
+    for (const [name, [x,y]] of Object.entries(points)) {
+        const { sx, sy } = worldToScreen(x, y);
+
+        ctx.beginPath();
+        ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "13px monospace";
+        ctx.fillText(name, sx + 7, sy - 7);
+    }
+
+    ctx.restore();
+}
+
 function drawArrowHead(x2, y2, x1, y1, color) {
     const headLength = 8;
     const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -345,8 +433,48 @@ function drawVectorField(ctx) {
 document.addEventListener("keydown", e => {
     if (e.key === "v") {
         isVectorFeild = !isVectorFeild;
+        vectorDirty = true;
+    } if(e.key === "h"){
+        isHeatMap = !isHeatMap;
+        heatmapDirty = true;
     }
 });
+
+function accelToColor(a, amin, amax) {
+    const t = Math.min(1,
+        (Math.log10(a) - Math.log10(amin)) /
+        (Math.log10(amax) - Math.log10(amin))
+    );
+
+    const r = Math.floor(255 * t);
+    const b = Math.floor(255 * (1 - t));
+    return `rgb(${r},0,${b})`;
+}
+
+function drawAccelHeatmap(grid, bounds) {
+    const dx = VECTOR_SPACING_PX;
+    const dy = VECTOR_SPACING_PX;
+
+    let amin = Infinity, amax = 0;
+    grid.flat().forEach(a => {
+        amin = Math.min(amin, a);
+        amax = Math.max(amax, a);
+    });
+
+    for (let i = 0; i < grid.length; i++) {
+        for (let j = 0; j < grid[i].length; j++) {
+            const wx = bounds.xmin + i * bounds.step;
+            const wy = bounds.ymin + j * bounds.step;
+            const { sx, sy } = worldToScreen(wx, wy);
+
+            ctx.fillStyle = accelToColor(grid[i][j], amin, amax);
+            ctx.globalAlpha = 0.50;
+            ctx.fillRect(sx, sy, dx, dy);
+            ctx.globalAlpha = 1.0;
+
+        }
+    }
+}
 
 /* ------------------------
     DRAW FRAME
@@ -357,8 +485,36 @@ function draw() {
     const bodies = window.bodies || [];
     if (bodies.length === 0) return;
 
-    if (isVectorFeild){
-        loadVectorField();
+    const now = performance.now();
+
+    if (isVectorFeild && now - lastFieldUpdate > FIELD_INTERVAL && !vectorBusy) {
+        vectorBusy = true;
+        loadVectorField().then(() => {
+            vectorBusy = false;
+            lastFieldUpdate = now;
+        });
+    }
+    
+    if (isHeatMap && now - lastHeatUpdate > HEAT_INTERVAL && !heatBusy) {
+        heatBusy = true;
+        loadAccelHeatmap().then(h => {
+            heatmap = h;
+            heatBusy = false;
+            lastHeatUpdate = now;
+        });
+    }
+
+    if (isHeatMap && heatmap) {
+        drawAccelHeatmap(heatmap.grid, heatmap.bounds);
+    }
+
+    if(selectedPlanet && lagrangeDirty && !lagrangeBusy && now - lastLagrangeUpdate > LAGRANGE_INTERVAL) {
+        lagrangeBusy = true;
+        loadLagrangePointsAsync().then(() => {
+            lagrangeBusy = false;
+            lagrangeDirty = false;
+            lastLagrangeUpdate = now;
+        });
     }
 
     drawVectorField(ctx);   // background
@@ -445,6 +601,10 @@ function draw() {
             }
         }
     });
+    if (lagrangePoints && selectedPlanet) {
+        drawLagrangePoints(lagrangePoints);
+    }
+
 }
 
 

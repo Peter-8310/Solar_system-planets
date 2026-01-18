@@ -1,6 +1,9 @@
 from astro import *
+from Lagrange import *
 from quart import Quart, jsonify, render_template, request
 from math import hypot
+import numpy as np
+
 
 app = Quart(__name__, static_folder="static")
 
@@ -70,6 +73,44 @@ async def vector_field():
 
     return jsonify({"vectors": vectors})
 
+@app.post("/accel_heatmap")
+async def accel_heatmap():
+    data = await request.get_json()
+
+    xmin = data["xmin"]
+    xmax = data["xmax"]
+    ymin = data["ymin"]
+    ymax = data["ymax"]
+    step = data["step"]
+
+    grid = sample_acceleration_heatmap(
+        bodies,
+        xmin, xmax,
+        ymin, ymax,
+        step
+    )
+
+    return jsonify({
+        "grid": grid
+    })
+
+@app.post("/lagrange")
+async def lagrange():
+    data = await request.get_json()
+    planet_name = data["planet"]
+
+    sun = next(b for b in bodies if b.name == "Sun")
+    planet = next(b for b in bodies if b.name == planet_name)
+
+    raw = instantaneous_lagrange_points(sun, planet)
+
+    # JSON-safe conversion
+    points = {
+        name: [float(p[0]), float(p[1])]
+        for name, p in raw.items()
+    }
+
+    return jsonify({"points": points})
 
 @app.route("/state")
 async def state():

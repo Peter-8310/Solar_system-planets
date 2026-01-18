@@ -122,12 +122,7 @@ def field_dir(x, y, bodies):
         return 0.0, 0.0
     return gx / gmag, gy / gmag
 
-def sample_vector_field(
-    bodies,
-    xmin, xmax,
-    ymin, ymax,
-    step
-):
+def sample_vector_field(bodies, xmin, xmax, ymin, ymax, step):
     vectors = []
 
     x = xmin
@@ -140,3 +135,20 @@ def sample_vector_field(
         x += step
 
     return vectors
+
+def sample_acceleration_heatmap(bodies, xmin, xmax, ymin, ymax, step):
+    grid = []
+
+    x = xmin
+    while x <= xmax:
+        row = []
+        y = ymin
+        while y <= ymax:
+            gx, gy = GravityField(np.array([x, y]), bodies)
+            amag = np.hypot(gx, gy)
+            row.append(amag)
+            y += step
+        grid.append(row)
+        x += step
+
+    return grid
