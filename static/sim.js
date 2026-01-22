@@ -17,7 +17,7 @@ let lagrangeBusy = false;
 let lagrangeDirty = true;
 let lastLagrangeUpdate = 0;
 
-const LAGRANGE_INTERVAL = 800; // ms (≈ 1.25 Hz)
+const LAGRANGE_INTERVAL = 250; // ms (≈ 1.25 Hz)
 
 
 const VECTOR_SPACING_PX = 40;
@@ -508,7 +508,7 @@ function draw() {
         drawAccelHeatmap(heatmap.grid, heatmap.bounds);
     }
 
-    if(selectedPlanet && lagrangeDirty && !lagrangeBusy && now - lastLagrangeUpdate > LAGRANGE_INTERVAL) {
+    if(selectedPlanet && !lagrangeBusy && now - lastLagrangeUpdate > LAGRANGE_INTERVAL) {
         lagrangeBusy = true;
         loadLagrangePointsAsync().then(() => {
             lagrangeBusy = false;
