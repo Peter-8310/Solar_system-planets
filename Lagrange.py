@@ -19,7 +19,7 @@ def instantaneous_lagrange_points(sun:Body, planet:Body):
     if R == 0:
         return {}
 
-    ux = r / R               # Sun → planet unit vector
+    ux = r / R # Sun → planet unit vector
     uy = np.array([-ux[1], ux[0]])  # perpendicular
 
     # 1D collinear equation along Sun-planet axis
