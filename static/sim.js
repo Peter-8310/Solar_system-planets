@@ -53,10 +53,6 @@ function markLagrangeDirty() {
     lagrangeDirty = true;
 }
 
-function setlabel(){
-    islabel = !islabel;
-}
-
 async function loadLagrangePointsAsync() {
     if (!selectedPlanet || selectedPlanet.name === "Sun") {
         lagrangePoints = null;
@@ -434,9 +430,11 @@ document.addEventListener("keydown", e => {
     if (e.key === "v") {
         isVectorFeild = !isVectorFeild;
         vectorDirty = true;
-    } if(e.key === "h"){
+    } if (e.key === "h"){
         isHeatMap = !isHeatMap;
         heatmapDirty = true;
+    } if (e.key === "l"){
+        islabel = !islabel;
     }
 });
 
