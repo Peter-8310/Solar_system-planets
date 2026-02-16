@@ -81,7 +81,7 @@ async function loadVectorField() {
     const xmax = offsetX + canvas.width  * scale / 2;
     const ymin = offsetY - canvas.height * scale / 2;
     const ymax = offsetY + canvas.height * scale / 2;
-
+ 
     const step = VECTOR_SPACING_PX * scale;
 
     const res = await fetch("/vector_field", {
