@@ -75,7 +75,7 @@ async function loadLagrangePointsAsync() {
     lagrangePoints = json.points;
 }
 
-
+ 
 async function loadVectorField() {
     const xmin = offsetX - canvas.width  * scale / 2;
     const xmax = offsetX + canvas.width  * scale / 2;
