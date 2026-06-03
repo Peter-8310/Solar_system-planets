@@ -16,6 +16,7 @@ $$
 
 
 * Vectorized graviational equation (Computes the vector of the gravity force of the first object influenced by the second)
+
 $$
 \overrightarrow{\text{G}} = F_G * \hat{r}
 $$
