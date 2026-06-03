@@ -45,14 +45,9 @@ def compute_gravity(bodies: list[Body], softening: float = 1e7):
             if r_norm == 0:
                 continue
 
-            # ------------------------
-            # Newtonian force
-            # ------------------------
+
             force_newton = G * bi.m * bj.m * r / r3
 
-            # ------------------------
-            # Post-Newtonian relativistic correction
-            # ------------------------
             vi2 = bi.v.dot(bi.v)
             vj2 = bj.v.dot(bj.v)
             vivj = bi.v.dot(bj.v)
@@ -83,13 +78,10 @@ def compute_potentials(bodies):
     return U
 
 def simulate(bodies:list[Body], dt):
-    # 1. First half: update positions using current acceleration
     for b in bodies:
         b.update_position(dt)
 
-    # 2. Recompute accelerations based on new positions
     compute_gravity(bodies)
 
-    # 3. Second half: update velocities using old+new acceleration
     for b in bodies:
         b.update_velocity(dt)
