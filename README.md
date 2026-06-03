@@ -22,7 +22,7 @@ $$
 \vec{\text{F}_{G}} = F_g * \hat{r}
 $$
 
-Where $\hat{r} = \frac{\overrightarrow{r}}{r}$ is the unit direction vector of the one object to another
+Where $\hat{r} = \frac{\vec{r}}{r}$ is the unit direction vector of the one object to another
 
 $$
 \therefore \vec{\text{F}_{G}} = G * \frac{{m_1} * {m_2} * \vec{\text{r}}}{r^3}
