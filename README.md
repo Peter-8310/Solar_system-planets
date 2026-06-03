@@ -19,13 +19,13 @@ Where G is the graviational constant, $m_1$ and $m_2$ are the masses of object 1
 * Vectorized graviational equation (Computes the vector of the gravity force of the first object influenced by the second)
 
 $$
-\vec{\text{F_G}} = F_G * \hat{r}
+\vec{\text{F}_{G}} = F_g * \hat{r}
 $$
 
 Where $\hat{r} = \frac{\vec{\text{r}}}{r}$ is the unit direction vector of the one object to another
 
 $$
-\therefore \vec{\text{F_G}} = G * \frac{m_1*m_2*\vec{\text{r}}}{r^3}
+\therefore \vec{\text{F}_{G}} = G * \frac{m_1*m_2*\vec{\text{r}}}{r^3}
 $$
 
 
