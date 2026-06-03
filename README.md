@@ -23,9 +23,11 @@ $$
 $$
 
 Where 
+
 $$
 \hat{r} = \frac{\vec{r}}{r}
 $$
+
 is the unit direction vector of the one object to another
 
 $$
