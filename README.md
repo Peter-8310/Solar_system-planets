@@ -11,17 +11,22 @@ Equations used:
 * The gravitational equation:
 
 $$
-F_G = \frac{m_1*m_2}{r^2}
+F_G = G * \frac{m_1*m_2}{r^2}
 $$
 
+Where G is the graviational constant, $m_1$ and $m_2$ are the masses of object 1 and object 2
 
 * Vectorized graviational equation (Computes the vector of the gravity force of the first object influenced by the second)
 
 $$
-\overrightarrow{\text{G}} = F_G * \hat{r}
+\overrightarrow{\text{F_G}} = F_G * \hat{r}
 $$
 
-Where $\hat{r} = \overrightarrow{\text{r}}/r$ is the unit direction vector of the one object to another
+Where $\hat{r} = \fract{\overrightarrow{\text{r}}}{r}$ is the unit direction vector of the one object to another
+
+$$
+\therefore \overrightarrow{\text{F_G}} = G * \frac{m_1*m_2*\overrightarrow{\text{r}}}{r^3}
+$$
 
 
 ## Getting Started
